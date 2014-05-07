@@ -1,6 +1,26 @@
+<<<<<<< HEAD
 .gradle
 /local.properties
 .idea
 .DS_Store
 *.class
 build
+=======
+#Android generated
+bin
+gen
+
+#Eclipse
+.project
+.classpath
+.settings
+
+#IntelliJ IDEA
+.idea
+*.iml
+
+#Maven
+target
+release.properties
+pom.xml.*
+>>>>>>> f966aa804c39b86fda279d99a1e21ba21bd6260a
