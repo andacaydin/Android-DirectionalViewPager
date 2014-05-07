@@ -94,7 +94,8 @@ public class BiDirectionalViewPager extends ViewGroup {
 
     private boolean mScrolling;
 
-    private float mInitialMotion;
+    private float mInitialMotionX;
+    private float mInitialMotionY;
     private int mOrientation = HORIZONTAL;
 
     private float downX;
@@ -158,7 +159,6 @@ public class BiDirectionalViewPager extends ViewGroup {
     private int mDefaultGutterSize;
     private int mGutterSize;
     private int mTouchSlop;
-    private float mInitialMotionX;
     /**
      * Position of the last motion event.
      */
@@ -555,6 +555,7 @@ public class BiDirectionalViewPager extends ViewGroup {
      * @param velocity the velocity associated with a fling, if applicable. (0 otherwise)
      */
     void smoothScrollTo(int x, int y, int velocity) {
+        Log.d(TAG,"smoothScrollTo("+x+","+y+")");
         if (getChildCount() == 0) {
             // Nothing to do.
             setScrollingCacheEnabled(false);
@@ -1062,7 +1063,8 @@ public class BiDirectionalViewPager extends ViewGroup {
                     mIsBeingDragged = true;
                     setScrollState(SCROLL_STATE_DRAGGING);
                      if (mOrientation == HORIZONTAL) {
-                        mLastMotionX = x;
+                        mLastMotionX = x;Log.d(TAG,"1065 write x:"+x);
+
                     } else {
                         mLastMotionY = y;
                     }
@@ -1087,11 +1089,11 @@ public class BiDirectionalViewPager extends ViewGroup {
                  * pointer index 0.
                  */
                 //if (mOrientation == HORIZONTAL) {
-                    mLastMotionX = mInitialMotion = ev.getX();
+                    mLastMotionX = mInitialMotionX = ev.getX(); Log.d(TAG,"1091 write x:"+(mInitialMotionX = ev.getX()));
                     //mLastMotionY = ev.getY();
                 //} else {
                     //mLastMotionX = ev.getX();
-                    mLastMotionY = mInitialMotion = ev.getY();
+                    mLastMotionY = mInitialMotionY = ev.getY();
                 //}
                 mActivePointerId = MotionEventCompat.getPointerId(ev, 0);
 
@@ -1166,9 +1168,9 @@ public class BiDirectionalViewPager extends ViewGroup {
 
                 // Remember where the motion event started
                  if (mOrientation == HORIZONTAL) {
-                    mLastMotionX = mInitialMotion = ev.getX();
+                    mLastMotionX = mInitialMotionX = ev.getX();Log.d(TAG,"1170 write x:"+ev.getX());
                  } else {
-                    mLastMotionY = mInitialMotion = ev.getY();
+                    mLastMotionY = mInitialMotionY = ev.getY();
                  }
                 mActivePointerId = MotionEventCompat.getPointerId(ev, 0);
                 break;
@@ -1223,7 +1225,7 @@ public class BiDirectionalViewPager extends ViewGroup {
                             Log.v(TAG, "Starting drag!");
                         mIsBeingDragged = true;
                         if (mOrientation == HORIZONTAL) {
-                            mLastMotionX = x;
+                            mLastMotionX = x; Log.d(TAG,"1227 write x:"+x);
                         } else {
                             mLastMotionY = y;
                         }
@@ -1245,12 +1247,12 @@ public class BiDirectionalViewPager extends ViewGroup {
                     if (mOrientation == HORIZONTAL) {
                         size = getWidth();
                         scroll = getScrollX() + (mLastMotionX - x);
+                        mLastMotionX = x; Log.d(TAG,"1249 write x:"+x);
                     } else {
                         size = getHeight();
                         scroll = getScrollY() + (mLastMotionY - y);
+                        mLastMotionY = y;
                     }
-                    mLastMotionX = x;
-                    mLastMotionY = y;
                    // Log.i(TAG, "mLastMotionY ="+y+" mLastMotionX="+x);
                     if(DEBUG)  Log.i(TAG, "current Item ="+mCurItem);
 
@@ -1263,13 +1265,11 @@ public class BiDirectionalViewPager extends ViewGroup {
                         scroll = upperBound;
                     }
                     if (mOrientation == HORIZONTAL) {
-                        // Don't lose the rounded component
-                        scrollTo((int) scroll, getScrollY() );
-                        Log.d(TAG," HORIZONTAL: scrollTo("+scroll+", "+getScrollY()+"); size="+size);
+                        scrollTo((int) scroll, getScrollY());
+                        Log.d(TAG, " HORIZONTAL: scrollTo(" + scroll + ", " + getScrollY() + "); size=" + size + "lastmotionX=" + mLastMotionX + "getScrollX()=" + getScrollX());
                     } else {
-                        // Don't lose the rounded component
                         scrollTo(getScrollX() , (int) scroll);
-                        Log.d(TAG," VERTICAL: scrollTo("+getScrollX()+", "+scroll+");size="+size);
+                        Log.d(TAG," VERTICAL: scrollTo("+getScrollX()+", "+scroll+");size="+size+"lastmotionY="+mLastMotionY+"getScrollY()="+getScrollY());
                     }
                     //mLastMotionY += scroll - (int) scroll;
                     //mLastMotionX += scroll - (int) scroll;
@@ -1292,23 +1292,26 @@ public class BiDirectionalViewPager extends ViewGroup {
                     int initialVelocity;
                     float lastMotion;
                     int sizeOverThree;
-
+                    float initialMotion;
                     if (mOrientation == HORIZONTAL) {
                         initialVelocity = (int) VelocityTrackerCompat.getXVelocity(
                                 velocityTracker, mActivePointerId);
                         lastMotion = mLastMotionX;
                         sizeOverThree = getWidth() / 3;
+                        initialMotion = mInitialMotionX;
                     } else {
                         initialVelocity = (int) VelocityTrackerCompat.getYVelocity(
                                 velocityTracker, mActivePointerId);
                         lastMotion = mLastMotionY;
                         sizeOverThree = getHeight() / 3;
+                        initialMotion = mInitialMotionY;
                     }
 
                     mPopulatePending = true;
                     if ((Math.abs(initialVelocity) > mMinimumVelocity)
-                            || Math.abs(mInitialMotion - lastMotion) >= sizeOverThree) {
-                        if (lastMotion > mInitialMotion) {
+                            || Math.abs(initialMotion - lastMotion) >= sizeOverThree) {
+                        Log.i(TAG, "lastMotion="+lastMotion+"mInitialMotionX="+ initialMotion);
+                        if (lastMotion > initialMotion) {
                             setCurrentItemInternal(mCurItem - 1, true, true);
                         } else {
                             setCurrentItemInternal(mCurItem + 1, true, true);
@@ -1332,7 +1335,7 @@ public class BiDirectionalViewPager extends ViewGroup {
             case MotionEventCompat.ACTION_POINTER_DOWN: {
                 final int index = MotionEventCompat.getActionIndex(ev);
                  if (mOrientation == HORIZONTAL) {
-                    mLastMotionX = MotionEventCompat.getX(ev, index);
+                    mLastMotionX = MotionEventCompat.getX(ev, index); Log.d(TAG,"1334 write x:"+MotionEventCompat.getX(ev, index));
                  } else {
                     mLastMotionY = MotionEventCompat.getY(ev, index);
                  }
@@ -1343,7 +1346,7 @@ public class BiDirectionalViewPager extends ViewGroup {
                 onSecondaryPointerUp(ev);
                 final int index = MotionEventCompat.findPointerIndex(ev, mActivePointerId);
                 //if (mOrientation == HORIZONTAL) {
-                    mLastMotionX = MotionEventCompat.getX(ev, index);
+                    mLastMotionX = MotionEventCompat.getX(ev, index); Log.d(TAG,"1345 write x:"+MotionEventCompat.getX(ev, index));
                 //} else {
                     mLastMotionY = MotionEventCompat.getY(ev, index);
                 //}
@@ -1785,9 +1788,9 @@ public class BiDirectionalViewPager extends ViewGroup {
         completeScroll();
 
         // Reset values
-        mInitialMotion = 0;
-        mLastMotionX = 0;
-        mLastMotionY = 0;
+        //mInitialMotionX = 0;
+        //mLastMotionX = 0; Log.d(TAG,"1788 write x:"+0);
+        //mLastMotionY = 0;
         if (mVelocityTracker != null) {
             mVelocityTracker.clear();
         }
@@ -1795,11 +1798,17 @@ public class BiDirectionalViewPager extends ViewGroup {
         // Adjust scroll for new orientation
         mOrientation = orientation;
         if (mOrientation == HORIZONTAL) {
-            scrollTo(mCurItem * getWidth(), 0);
+            scrollTo(mCurItem * getWidth() , 0 );
         } else {
-            scrollTo(0, mCurItem * getHeight());
+            scrollTo(0 , mCurItem * getHeight());
         }
         requestLayout();
+    }
+
+    @Override
+    public void scrollTo(int x, int y) {
+        Log.d(TAG,"scrollTo("+x+","+y+")");
+        super.scrollTo(x, y);
     }
 
     @Override
@@ -1847,7 +1856,7 @@ public class BiDirectionalViewPager extends ViewGroup {
             // active pointer and adjust accordingly.
             final int newPointerIndex = pointerIndex == 0 ? 1 : 0;
              if (mOrientation == HORIZONTAL) {
-                mLastMotionX = MotionEventCompat.getX(ev, newPointerIndex);
+                mLastMotionX = MotionEventCompat.getX(ev, newPointerIndex); Log.d(TAG,"1855 write x:"+MotionEventCompat.getX(ev, newPointerIndex));
              } else {
                 mLastMotionY = MotionEventCompat.getY(ev, newPointerIndex);
              }
