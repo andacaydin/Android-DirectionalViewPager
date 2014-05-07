@@ -1061,11 +1061,11 @@ public class BiDirectionalViewPager extends ViewGroup {
                         Log.v(TAG, "Starting drag!");
                     mIsBeingDragged = true;
                     setScrollState(SCROLL_STATE_DRAGGING);
-                    //if (mOrientation == HORIZONTAL) {
+                     if (mOrientation == HORIZONTAL) {
                         mLastMotionX = x;
-                    //} else {
+                    } else {
                         mLastMotionY = y;
-                    //}
+                    }
                     setScrollingCacheEnabled(true);
                 } else {
                     if (secondaryDiff > mTouchSlop) {
@@ -1165,11 +1165,11 @@ public class BiDirectionalViewPager extends ViewGroup {
                 completeScroll();
 
                 // Remember where the motion event started
-               // if (mOrientation == HORIZONTAL) {
+                 if (mOrientation == HORIZONTAL) {
                     mLastMotionX = mInitialMotion = ev.getX();
-               // } else {
+                 } else {
                     mLastMotionY = mInitialMotion = ev.getY();
-               // }
+                 }
                 mActivePointerId = MotionEventCompat.getPointerId(ev, 0);
                 break;
             }
@@ -1222,11 +1222,11 @@ public class BiDirectionalViewPager extends ViewGroup {
                         if (DEBUG)
                             Log.v(TAG, "Starting drag!");
                         mIsBeingDragged = true;
-                        //if (mOrientation == HORIZONTAL) {
+                        if (mOrientation == HORIZONTAL) {
                             mLastMotionX = x;
-                        //} else {
+                        } else {
                             mLastMotionY = y;
-                        //}
+                        }
                         setScrollState(SCROLL_STATE_DRAGGING);
                         setScrollingCacheEnabled(true);
                     }
@@ -1331,11 +1331,11 @@ public class BiDirectionalViewPager extends ViewGroup {
                 break;
             case MotionEventCompat.ACTION_POINTER_DOWN: {
                 final int index = MotionEventCompat.getActionIndex(ev);
-                //if (mOrientation == HORIZONTAL) {
+                 if (mOrientation == HORIZONTAL) {
                     mLastMotionX = MotionEventCompat.getX(ev, index);
-                //} else {
+                 } else {
                     mLastMotionY = MotionEventCompat.getY(ev, index);
-                //}
+                 }
                 mActivePointerId = MotionEventCompat.getPointerId(ev, index);
                 break;
             }
@@ -1846,11 +1846,11 @@ public class BiDirectionalViewPager extends ViewGroup {
             // This was our active pointer going up. Choose a new
             // active pointer and adjust accordingly.
             final int newPointerIndex = pointerIndex == 0 ? 1 : 0;
-           // if (mOrientation == HORIZONTAL) {
+             if (mOrientation == HORIZONTAL) {
                 mLastMotionX = MotionEventCompat.getX(ev, newPointerIndex);
-           // } else {
+             } else {
                 mLastMotionY = MotionEventCompat.getY(ev, newPointerIndex);
-           // }
+             }
             mActivePointerId = MotionEventCompat.getPointerId(ev, newPointerIndex);
             if (mVelocityTracker != null) {
                 mVelocityTracker.clear();

@@ -39,11 +39,12 @@ public final class TestFragment extends BiDirectionalFragment {
 		text.setTextSize(20 * getResources().getDisplayMetrics().density);
 		text.setPadding(20, 20, 20, 20);
 		text.setGravity(Gravity.CENTER);
+        text.setBackgroundColor(getResources().getColor(android.R.color.white));
 
 		LinearLayout layout = new LinearLayout(getActivity());
 		layout.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT, ViewGroup.LayoutParams.FILL_PARENT));
 		layout.setGravity(Gravity.CENTER);
-        layout.setBackgroundColor(getResources().getColor(android.R.color.darker_gray));
+        layout.setBackgroundColor(getResources().getColor(R.color.Aquamarine));
 		layout.addView(text);
 
 		return layout;
