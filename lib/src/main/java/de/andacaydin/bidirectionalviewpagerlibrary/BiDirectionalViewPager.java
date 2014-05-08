@@ -103,7 +103,7 @@ public class BiDirectionalViewPager extends ViewGroup {
     private boolean isOrientationModeLocked = false;
 
     private static final String TAG = "ViewPager";
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG = true;
     private static final int DEFAULT_OFFSCREEN_PAGES = 1;
     private static final int MAX_SETTLE_DURATION = 600; // ms
     private static final int MIN_DISTANCE_FOR_FLING = 25; // dips
@@ -365,7 +365,6 @@ public class BiDirectionalViewPager extends ViewGroup {
         return mCurItem;
     }
     void setCurrentItemInternal(int item, boolean smoothScroll, boolean always) {
-       // Log.d(TAG,"setCurrentItemInternal("+item+", "+smoothScroll+","+always+")" );
         if (mAdapter == null || mAdapter.getCount() <= 0) {
             setScrollingCacheEnabled(false);
             return;
@@ -508,35 +507,6 @@ public class BiDirectionalViewPager extends ViewGroup {
             d.setState(getDrawableState());
         }
     }
-    /**
-     * Like {@link android.view.View#scrollBy}, but scroll smoothly instead of immediately.
-     *
-     * @param x the number of pixels to scroll by on the X axis
-     * @param y the number of pixels to scroll by on the Y axis
-
-    void smoothScrollTo(int x, int y) {
-        Log.d(TAG,"smoothScrollTo("+x+", "+y+")" );
-
-        if (getChildCount() == 0) {
-            // Nothing to do.
-            setScrollingCacheEnabled(false);
-            return;
-        }
-        int sx = getScrollX();
-        int sy = getScrollY();
-        int dx = x - sx;
-        int dy = y - sy;
-        if (dx == 0 && dy == 0) {
-            completeScroll();
-            return;
-        }
-
-        setScrollingCacheEnabled(true);
-        mScrolling = true;
-        setScrollState(SCROLL_STATE_SETTLING);
-        mScroller.startScroll(sx, sy, dx, dy);
-        invalidate();
-    } */
 
     /**
      * Like {@link android.view.View#scrollBy}, but scroll smoothly instead of immediately.
@@ -555,7 +525,6 @@ public class BiDirectionalViewPager extends ViewGroup {
      * @param velocity the velocity associated with a fling, if applicable. (0 otherwise)
      */
     void smoothScrollTo(int x, int y, int velocity) {
-        Log.d(TAG,"smoothScrollTo("+x+","+y+")");
         if (getChildCount() == 0) {
             // Nothing to do.
             setScrollingCacheEnabled(false);
@@ -590,6 +559,9 @@ public class BiDirectionalViewPager extends ViewGroup {
         duration = Math.min(duration, MAX_SETTLE_DURATION);
         mScroller.startScroll(sx, sy, dx, dy, duration);
         ViewCompat.postInvalidateOnAnimation(this);
+
+        requestLayout();
+
     }
    // We want the duration of the page snap animation to be influenced by the distance that
     // the screen has to travel, however, we don't want this duration to be effected in a
@@ -671,7 +643,7 @@ public class BiDirectionalViewPager extends ViewGroup {
         // that position, avoiding glitches from happening at that point.
         if (mPopulatePending) {
             if (DEBUG)
-                Log.i(TAG, "populate is pending, skipping for now...");
+                Log.i(TAG, "populate(): populate is pending, skipping for now...");
             return;
         }
 
@@ -689,7 +661,7 @@ public class BiDirectionalViewPager extends ViewGroup {
         final int endPos = mCurItem < (count - 1) ? mCurItem + 1 : count - 1;
 
         if (DEBUG)
-            Log.v(TAG, "populating: startPos=" + startPos + " endPos=" + endPos);
+            Log.v(TAG, "populate(): populating: startPos=" + startPos + " endPos=" + endPos);
 
         // Add and remove pages in the existing list.
         int lastPos = -1;
@@ -697,7 +669,7 @@ public class BiDirectionalViewPager extends ViewGroup {
             ItemInfo ii = mItems.get(i);
             if ((ii.position < startPos || ii.position > endPos) && !ii.scrolling) {
                 if (DEBUG)
-                    Log.i(TAG, "removing: " + ii.position + " @ " + i);
+                    Log.i(TAG, "populate(): removing: " + ii.position + " @ " + i);
                 mItems.remove(i);
                 i--;
                 //TODO needs to destroy items. currently unstable: NPE if fragment has subfragments (SupportMap)
@@ -712,7 +684,7 @@ public class BiDirectionalViewPager extends ViewGroup {
                 }
                 while (lastPos <= endPos && lastPos < ii.position) {
                     if (DEBUG)
-                        Log.i(TAG, "inserting: " + lastPos + " @ " + i);
+                        Log.i(TAG, "populate(): inserting: " + lastPos + " @ " + i);
                     addNewItem(lastPos, i);
                     lastPos++;
                     i++;
@@ -728,16 +700,16 @@ public class BiDirectionalViewPager extends ViewGroup {
             lastPos = lastPos > startPos ? lastPos : startPos;
             while (lastPos <= endPos) {
                 if (DEBUG)
-                    Log.i(TAG, "appending: " + lastPos);
+                    Log.i(TAG, "populate(): appending: " + lastPos);
                 addNewItem(lastPos, -1);
                 lastPos++;
             }
         }
 
         if (DEBUG) {
-            Log.i(TAG, "Current page list:");
+            Log.i(TAG, "populate(): Current page list:");
             for (int i = 0; i < mItems.size(); i++) {
-                Log.i(TAG, "#" + i + ": page " + mItems.get(i).position);
+                Log.i(TAG, "populate(): #" + i + ": page " + mItems.get(i).position);
             }
         }
 
@@ -899,7 +871,7 @@ public class BiDirectionalViewPager extends ViewGroup {
                     childTop += off;
                 }
                 if (DEBUG)
-                    Log.v(TAG, "Positioning #" + i + " " + child + " f=" + ii.object
+                    Log.v(TAG, "onLayout: Positioning #" + i + " " + child + " f=" + ii.object
                             + ":" + childLeft + "," + childTop + " " + child.getMeasuredWidth()
                             + "x" + child.getMeasuredHeight());
                 child.layout(childLeft, childTop,
@@ -922,7 +894,6 @@ public class BiDirectionalViewPager extends ViewGroup {
                 int y = mScroller.getCurrY();
 
                 if (oldX != x || oldY != y) {
-                   // Log.d(TAG, " scrollTo("+x+", "+y+")");
                     scrollTo(x, y);
                 }
 
@@ -1063,7 +1034,7 @@ public class BiDirectionalViewPager extends ViewGroup {
                     mIsBeingDragged = true;
                     setScrollState(SCROLL_STATE_DRAGGING);
                      if (mOrientation == HORIZONTAL) {
-                        mLastMotionX = x;Log.d(TAG,"1065 write x:"+x);
+                        mLastMotionX = x;
 
                     } else {
                         mLastMotionY = y;
@@ -1088,13 +1059,8 @@ public class BiDirectionalViewPager extends ViewGroup {
                  * Remember location of down touch. ACTION_DOWN always refers to
                  * pointer index 0.
                  */
-                //if (mOrientation == HORIZONTAL) {
-                    mLastMotionX = mInitialMotionX = ev.getX(); Log.d(TAG,"1091 write x:"+(mInitialMotionX = ev.getX()));
-                    //mLastMotionY = ev.getY();
-                //} else {
-                    //mLastMotionX = ev.getX();
-                    mLastMotionY = mInitialMotionY = ev.getY();
-                //}
+                mLastMotionX = mInitialMotionX = ev.getX();
+                mLastMotionY = mInitialMotionY = ev.getY();
                 mActivePointerId = MotionEventCompat.getPointerId(ev, 0);
 
                 if (mScrollState == SCROLL_STATE_SETTLING) {
@@ -1168,7 +1134,7 @@ public class BiDirectionalViewPager extends ViewGroup {
 
                 // Remember where the motion event started
                  if (mOrientation == HORIZONTAL) {
-                    mLastMotionX = mInitialMotionX = ev.getX();Log.d(TAG,"1170 write x:"+ev.getX());
+                    mLastMotionX = mInitialMotionX = ev.getX();
                  } else {
                     mLastMotionY = mInitialMotionY = ev.getY();
                  }
@@ -1225,7 +1191,7 @@ public class BiDirectionalViewPager extends ViewGroup {
                             Log.v(TAG, "Starting drag!");
                         mIsBeingDragged = true;
                         if (mOrientation == HORIZONTAL) {
-                            mLastMotionX = x; Log.d(TAG,"1227 write x:"+x);
+                            mLastMotionX = x;
                         } else {
                             mLastMotionY = y;
                         }
@@ -1247,7 +1213,7 @@ public class BiDirectionalViewPager extends ViewGroup {
                     if (mOrientation == HORIZONTAL) {
                         size = getWidth();
                         scroll = getScrollX() + (mLastMotionX - x);
-                        mLastMotionX = x; Log.d(TAG,"1249 write x:"+x);
+                        mLastMotionX = x;
                     } else {
                         size = getHeight();
                         scroll = getScrollY() + (mLastMotionY - y);
@@ -1266,10 +1232,8 @@ public class BiDirectionalViewPager extends ViewGroup {
                     }
                     if (mOrientation == HORIZONTAL) {
                         scrollTo((int) scroll, getScrollY());
-                        Log.d(TAG, " HORIZONTAL: scrollTo(" + scroll + ", " + getScrollY() + "); size=" + size + "lastmotionX=" + mLastMotionX + "getScrollX()=" + getScrollX());
                     } else {
                         scrollTo(getScrollX() , (int) scroll);
-                        Log.d(TAG," VERTICAL: scrollTo("+getScrollX()+", "+scroll+");size="+size+"lastmotionY="+mLastMotionY+"getScrollY()="+getScrollY());
                     }
                     //mLastMotionY += scroll - (int) scroll;
                     //mLastMotionX += scroll - (int) scroll;
@@ -1321,21 +1285,21 @@ public class BiDirectionalViewPager extends ViewGroup {
                     }
 
                     mActivePointerId = INVALID_POINTER;
-                    endDrag();// Log.d(TAG,"endDrag ACTION_UP");
+                    endDrag();
                 }
                 break;
             case MotionEvent.ACTION_CANCEL:
                 if (mIsBeingDragged) {
                     setCurrentItemInternal(mCurItem, true, true);
                     mActivePointerId = INVALID_POINTER;
-                    endDrag();// Log.d(TAG,"endDrag ACTION_CANCEL");
+                    endDrag();
                 }
                 isOrientationModeLocked = false;
                 break;
             case MotionEventCompat.ACTION_POINTER_DOWN: {
                 final int index = MotionEventCompat.getActionIndex(ev);
                  if (mOrientation == HORIZONTAL) {
-                    mLastMotionX = MotionEventCompat.getX(ev, index); Log.d(TAG,"1334 write x:"+MotionEventCompat.getX(ev, index));
+                    mLastMotionX = MotionEventCompat.getX(ev, index);
                  } else {
                     mLastMotionY = MotionEventCompat.getY(ev, index);
                  }
@@ -1345,11 +1309,8 @@ public class BiDirectionalViewPager extends ViewGroup {
             case MotionEventCompat.ACTION_POINTER_UP:
                 onSecondaryPointerUp(ev);
                 final int index = MotionEventCompat.findPointerIndex(ev, mActivePointerId);
-                //if (mOrientation == HORIZONTAL) {
-                    mLastMotionX = MotionEventCompat.getX(ev, index); Log.d(TAG,"1345 write x:"+MotionEventCompat.getX(ev, index));
-                //} else {
-                    mLastMotionY = MotionEventCompat.getY(ev, index);
-                //}
+                mLastMotionX = MotionEventCompat.getX(ev, index);
+                mLastMotionY = MotionEventCompat.getY(ev, index);
                 break;
         }
         return true;
@@ -1787,10 +1748,6 @@ public class BiDirectionalViewPager extends ViewGroup {
         // Complete any scroll we are currently in the middle of
         completeScroll();
 
-        // Reset values
-        //mInitialMotionX = 0;
-        //mLastMotionX = 0; Log.d(TAG,"1788 write x:"+0);
-        //mLastMotionY = 0;
         if (mVelocityTracker != null) {
             mVelocityTracker.clear();
         }
@@ -1807,7 +1764,6 @@ public class BiDirectionalViewPager extends ViewGroup {
 
     @Override
     public void scrollTo(int x, int y) {
-        Log.d(TAG,"scrollTo("+x+","+y+")");
         super.scrollTo(x, y);
     }
 
@@ -1856,7 +1812,7 @@ public class BiDirectionalViewPager extends ViewGroup {
             // active pointer and adjust accordingly.
             final int newPointerIndex = pointerIndex == 0 ? 1 : 0;
              if (mOrientation == HORIZONTAL) {
-                mLastMotionX = MotionEventCompat.getX(ev, newPointerIndex); Log.d(TAG,"1855 write x:"+MotionEventCompat.getX(ev, newPointerIndex));
+                mLastMotionX = MotionEventCompat.getX(ev, newPointerIndex);
              } else {
                 mLastMotionY = MotionEventCompat.getY(ev, newPointerIndex);
              }
