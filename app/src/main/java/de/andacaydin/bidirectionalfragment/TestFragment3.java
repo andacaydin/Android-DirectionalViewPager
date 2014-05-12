@@ -58,17 +58,17 @@ public final class TestFragment3 extends BiDirectionalFragment {
 
     @Override
     public Class getLeftFragment() {
-        return this.getClass();
+        return TestFragment.class;
     }
 
     @Override
     public Class getRightFragment() {
-        return this.getClass();
+        return TestFragment2.class;
     }
 
     @Override
     public Class getTopFragment() {
-        return this.getClass();
+        return TestFragment4.class;
     }
 
     @Override

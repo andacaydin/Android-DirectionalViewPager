@@ -3,6 +3,7 @@ package de.andacaydin.bidirectionalviewpagerlibrary;
 import android.content.Context;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
+import android.view.ViewGroup;
 
 import java.util.ArrayList;
 
@@ -19,14 +20,6 @@ public class BiDirectionalPagerAdapter extends FragmentStatePagerAdapter {
         this.context = context;
     }
 
-
-    @Override
-    public float getPageWidth(int position) {
-        if (position == 3) {
-            return (0.5f);
-        } else return super.getPageWidth(position);
-    }
-
     @Override
     public BiDirectionalFragment getItem(int index) {
        return  (BiDirectionalFragment) Fragment.instantiate(context,classes.get(index).getName());
@@ -39,5 +32,15 @@ public class BiDirectionalPagerAdapter extends FragmentStatePagerAdapter {
         return classes.size();
     }
 
-    public int getItemPosition (Object object) { return POSITION_NONE; }
+    public int getItemPosition (Object object) {
+        return classes.indexOf(object);
+    }
+
+    public BiDirectionalFragment instantiateItem(ViewGroup container, Class clazz) {
+       return super.instantiateItem(container,classes.indexOf(clazz));
+    }
+
+    public Class getFirstClass() {
+        return classes.get(0);
+    }
 }

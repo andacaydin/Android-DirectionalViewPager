@@ -28,6 +28,8 @@ import android.view.ViewGroup;
 
 import java.util.ArrayList;
 
+import de.andacaydin.bidirectionalviewpagerlibrary.BiDirectionalFragment;
+
 /**
  * Implementation of {@link android.support.v4.view.PagerAdapter} that
  * uses a {@link android.support.v4.app.Fragment} to manage each page. This class also handles
@@ -73,11 +75,11 @@ public abstract class FragmentStatePagerAdapter extends PagerAdapter {
 
     private ArrayList<Fragment.SavedState> mSavedState = new ArrayList<Fragment.SavedState>();
 
-    public ArrayList<Fragment> getmFragments() {
+    public ArrayList<BiDirectionalFragment> getmFragments() {
         return mFragments;
     }
 
-    private ArrayList<Fragment> mFragments = new ArrayList<Fragment>();
+    private ArrayList<BiDirectionalFragment> mFragments = new ArrayList<BiDirectionalFragment>();
     private Fragment mCurrentPrimaryItem = null;
 
     public FragmentStatePagerAdapter(FragmentManager fm) {
@@ -87,20 +89,20 @@ public abstract class FragmentStatePagerAdapter extends PagerAdapter {
     /**
      * Return the Fragment associated with a specified position.
      */
-    public abstract Fragment getItem(int position);
+    public abstract BiDirectionalFragment getItem(int position);
 
     @Override
     public void startUpdate(ViewGroup container) {
     }
 
     @Override
-    public Object instantiateItem(ViewGroup container, int position) {
+    public BiDirectionalFragment instantiateItem(ViewGroup container, int position) {
         // If we already have this item instantiated, there is nothing
         // to do.  This can happen when we are restoring the entire pager
         // from its saved state, where the fragment manager has already
         // taken care of restoring the fragments we previously had instantiated.
         if (mFragments.size() > position) {
-            Fragment f = mFragments.get(position);
+            BiDirectionalFragment f = mFragments.get(position);
             if (f != null) {
                 return f;
             }
@@ -110,7 +112,7 @@ public abstract class FragmentStatePagerAdapter extends PagerAdapter {
             mCurTransaction = mFragmentManager.beginTransaction();
         }
 
-        Fragment fragment = getItem(position);
+        BiDirectionalFragment fragment = getItem(position);
         if (DEBUG) Log.v(TAG, "Adding item #" + position + ": f=" + fragment);
         if (mSavedState.size() > position) {
             Fragment.SavedState fss = mSavedState.get(position);
@@ -217,7 +219,7 @@ public abstract class FragmentStatePagerAdapter extends PagerAdapter {
             for (String key: keys) {
                 if (key.startsWith("f")) {
                     int index = Integer.parseInt(key.substring(1));
-                    Fragment f = mFragmentManager.getFragment(bundle, key);
+                    BiDirectionalFragment f = (BiDirectionalFragment) mFragmentManager.getFragment(bundle, key);
                     if (f != null) {
                         while (mFragments.size() <= index) {
                             mFragments.add(null);

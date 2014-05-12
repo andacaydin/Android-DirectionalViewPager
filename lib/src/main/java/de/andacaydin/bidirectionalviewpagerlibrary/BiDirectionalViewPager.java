@@ -112,15 +112,15 @@ public class BiDirectionalViewPager extends ViewGroup {
         android.R.attr.layout_gravity
     };
     static class ItemInfo {
-        Object object;
+        BiDirectionalFragment object;
         int position;
         boolean scrolling;
         float widthFactor;
         float offset;
-        Class leftClass;
-        Class rightClass;
-        Class topClass;
-        Class bottomClass;
+        Class leftFragmentClass;
+        Class rightFragmentClass;
+        Class topFragmentClass;
+        Class bottomFragmentClass;
     }
     private static final Comparator<ItemInfo> COMPARATOR = new Comparator<ItemInfo>(){
         @Override
@@ -129,10 +129,10 @@ public class BiDirectionalViewPager extends ViewGroup {
         }
     };
     private final ArrayList<ItemInfo> mItems = new ArrayList<ItemInfo>();
-    private final ItemInfo mTempItem = new ItemInfo();
     private final Rect mTempRect = new Rect();
-    private PagerAdapter mAdapter;
+    private BiDirectionalPagerAdapter mAdapter;
     private int mCurItem;   // Index of currently displayed page.
+    private ItemInfo currentItemInfo;
     private int mRestoredCurItem = -1;
     private Parcelable mRestoredAdapterState = null;
     private ClassLoader mRestoredClassLoader = null;
@@ -313,6 +313,9 @@ public class BiDirectionalViewPager extends ViewGroup {
         mAdapter = adapter;
 
         if (mAdapter != null) {
+            //set first element in position 0
+            currentItemInfo = addNewItem(0,-1,mAdapter.getFirstClass());
+
             if (mObserver == null) {
                 mObserver = new DataSetObserver();
             }
@@ -348,6 +351,7 @@ public class BiDirectionalViewPager extends ViewGroup {
      * @param item Item index to select
      */
     public void setCurrentItem(int item) {
+        Log.i(TAG,"setCurrentItem("+item+")");
         mPopulatePending = false;
         setCurrentItemInternal(item, true, false);
     }
@@ -358,13 +362,19 @@ public class BiDirectionalViewPager extends ViewGroup {
      * @param smoothScroll True to smoothly scroll to the new item, false to transition immediately
      */
     public void setCurrentItem(int item, boolean smoothScroll) {
+        Log.i(TAG,"setCurrentItem("+item+", "+smoothScroll+")");
         mPopulatePending = false;
         setCurrentItemInternal(item, smoothScroll, false);
     }
     public int getCurrentItem() {
         return mCurItem;
     }
+
     void setCurrentItemInternal(int item, boolean smoothScroll, boolean always) {
+        Log.i(TAG,"setCurrentItemInternal("+item+","+smoothScroll+","+always+")");
+
+        Log.d(TAG,"currentFocusedClass: "+currentItemInfo.object.getClass());
+
         if (mAdapter == null || mAdapter.getCount() <= 0) {
             setScrollingCacheEnabled(false);
             return;
@@ -373,27 +383,29 @@ public class BiDirectionalViewPager extends ViewGroup {
             setScrollingCacheEnabled(false);
             return;
         }
-        if (item < 0) {
-            item = 0;
-        } else if (item >= mAdapter.getCount()) {
-            item = mAdapter.getCount() - 1;
+        if (item <= 0) {
+            //item = 0;
+            //return; //no need to change current item.
         }
-        if (item > (mCurItem + 1) || item < (mCurItem - 1)) {
-            // We are doing a jump by more than one page. To avoid
-            // glitches, we want to keep all current pages in the view
-            // until the scroll ends.
-            for (int i = 0; i < mItems.size(); i++) {
-                mItems.get(i).scrolling = true;
-            }
-        }
+
         final boolean dispatchSelected = mCurItem != item;
         mCurItem = item;
+
+        int motion;
+        switch(item){
+            case 2 :
+            case 3 : motion = 2; break; //snap to next position
+            case 1:
+            case 4: motion = 0; break; //snap to previous position
+            default: motion = 1; smoothScroll = false; break; //snap to original position
+        }
+
         populate();
         if (smoothScroll) {
             if (mOrientation == HORIZONTAL) {
-                smoothScrollTo(getWidth() * item, 0);
+                smoothScrollTo(getWidth() * motion, getHeight());
             } else {
-                smoothScrollTo(0, getHeight() * item);
+                smoothScrollTo(getWidth(), getHeight() * motion);
             }
             if (dispatchSelected && mOnPageChangeListener != null) {
                 mOnPageChangeListener.onPageSelected(item);
@@ -404,11 +416,13 @@ public class BiDirectionalViewPager extends ViewGroup {
             }
             completeScroll();
             if (mOrientation == HORIZONTAL) {
-                scrollTo(getWidth() * item, 0);
+                scrollTo(getWidth() * motion, getHeight());
             } else {
-                scrollTo(0, getHeight() * item);
+                scrollTo(getWidth(), getHeight() * motion);
             }
         }
+
+
     }
     /**
      * Set a listener that will be invoked whenever the page changes or is incrementally
@@ -525,6 +539,7 @@ public class BiDirectionalViewPager extends ViewGroup {
      * @param velocity the velocity associated with a fling, if applicable. (0 otherwise)
      */
     void smoothScrollTo(int x, int y, int velocity) {
+        Log.i(TAG, "smoothScrollTo("+x+","+y+","+velocity+")");
         if (getChildCount() == 0) {
             // Nothing to do.
             setScrollingCacheEnabled(false);
@@ -572,15 +587,19 @@ public class BiDirectionalViewPager extends ViewGroup {
         f *= 0.3f * Math.PI / 2.0f;
         return (float) Math.sin(f);
     }
-    ItemInfo addNewItem(int position, int index) {
+    ItemInfo addNewItem(int position, int index, Class clazz) {
         ItemInfo ii = new ItemInfo();
         ii.position = position;
-        ii.object = mAdapter.instantiateItem(this, position);
+        ii.object = mAdapter.instantiateItem(this, clazz);
         if (index < 0) {
             mItems.add(ii);
         } else {
             mItems.add(index, ii);
         }
+        ii.leftFragmentClass = ii.object.getLeftFragment();
+        ii.rightFragmentClass = ii.object.getRightFragment();
+        ii.topFragmentClass = ii.object.getTopFragment();
+        ii.bottomFragmentClass = ii.object.getBottomFragment();
         return ii;
     }
     void dataSetChanged() {
@@ -632,6 +651,8 @@ public class BiDirectionalViewPager extends ViewGroup {
             requestLayout();
         }
     }
+
+
     void populate() {
         if (mAdapter == null) {
             return;
@@ -645,6 +666,8 @@ public class BiDirectionalViewPager extends ViewGroup {
             if (DEBUG)
                 Log.i(TAG, "populate(): populate is pending, skipping for now...");
             return;
+        }else {
+            Log.i(TAG, "populate()");
         }
 
         // Also, don't populate until we are attached to a window. This is to
@@ -654,12 +677,41 @@ public class BiDirectionalViewPager extends ViewGroup {
             return;
         }
 
+        //only populate if curitem has been changed. range= 1-4
+     /*   if(mCurItem == 0 && !(mItems.size()==1)){
+            return;
+        }*/
         mAdapter.startUpdate(this);
+        mItems.clear();
+        //final int startPos = mCurItem > 0 ? mCurItem - 1 : mCurItem;
+        //final int count = mAdapter.getCount();
+        //final int endPos = mCurItem < (count - 1) ? mCurItem + 1 : count - 1;
+        Class targetclass;
+        switch(mCurItem){
+            case 0: targetclass = currentItemInfo.object.getClass();break;
+            case 1: targetclass = currentItemInfo.topFragmentClass;break;
+            case 2: targetclass = currentItemInfo.rightFragmentClass;break;
+            case 3: targetclass = currentItemInfo.bottomFragmentClass;break;
+            case 4: targetclass = currentItemInfo.leftFragmentClass;break;
+            default: throw new UnsupportedOperationException();
+        }
+        currentItemInfo = addNewItem(0,-1,targetclass);
 
-        final int startPos = mCurItem > 0 ? mCurItem - 1 : mCurItem;
-        final int count = mAdapter.getCount();
-        final int endPos = mCurItem < (count - 1) ? mCurItem + 1 : count - 1;
+        if(currentItemInfo.topFragmentClass != null){
+            addNewItem(1, -1, currentItemInfo.topFragmentClass);
+        }
+        if(currentItemInfo.rightFragmentClass != null){
+            addNewItem(2, -1, currentItemInfo.rightFragmentClass);
+        }
+        if(currentItemInfo.bottomFragmentClass != null){
+            addNewItem(3, -1, currentItemInfo.bottomFragmentClass);
+        }
+        if(currentItemInfo.leftFragmentClass != null){
+            addNewItem(4, -1,currentItemInfo.leftFragmentClass);
+        }
+        mCurItem = 0; //back to default situation
 
+/*
         if (DEBUG)
             Log.v(TAG, "populate(): populating: startPos=" + startPos + " endPos=" + endPos);
 
@@ -705,11 +757,11 @@ public class BiDirectionalViewPager extends ViewGroup {
                 lastPos++;
             }
         }
-
+*/
         if (DEBUG) {
-            Log.i(TAG, "populate(): Current page list:");
+            Log.d(TAG, "populate(): Current page list:");
             for (int i = 0; i < mItems.size(); i++) {
-                Log.i(TAG, "populate(): #" + i + ": page " + mItems.get(i).position);
+                Log.d(TAG, "populate(): #" + i + ": position " + mItems.get(i).position+" class:"+mItems.get(i).object.getClass());
             }
         }
 
@@ -799,6 +851,7 @@ public class BiDirectionalViewPager extends ViewGroup {
     }
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        Log.i(TAG, "onMeasure("+widthMeasureSpec+","+heightMeasureSpec+")");
         // For simple implementation, or internal size is always 0.
         // We depend on the container to specify the layout size of
         // our view. We can't really know what it is since we will be
@@ -832,51 +885,72 @@ public class BiDirectionalViewPager extends ViewGroup {
     }
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        Log.i(TAG, "onSizeChanged("+w+","+h+","+oldw+","+oldh+")");
         super.onSizeChanged(w, h, oldw, oldh);
 
         // Make sure scroll position is set correctly.
+         /*
         if (mOrientation == HORIZONTAL) {
-            int scrollPos = mCurItem * w;
+           // int scrollPos = mCurItem * w;
+            int scrollPos =  w;
             if (scrollPos != getScrollX()) {
                 completeScroll();
                 scrollTo(scrollPos, getScrollY());
             }
         } else {
-            int scrollPos = mCurItem * h;
+           // int scrollPos = mCurItem * h;
+            int scrollPos = h;
             if (scrollPos != getScrollY()) {
                 completeScroll();
                 scrollTo(getScrollX(), scrollPos);
             }
         }
+        */
+        if(h != getScrollY() || w != getScrollX()){
+            completeScroll();
+            scrollTo(w, h);
+        }
+        //scrollTo(w, h);
     }
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        Log.i(TAG,"onLayout("+changed+"l: "+l+" , t:"+t+" r:"+r+" b:"+b);
         mInLayout = true;
         populate();
         mInLayout = false;
 
         final int count = getChildCount();
-        final int size = (mOrientation == HORIZONTAL) ? r - l : b - t;
+        final int sizeX =  r - l ;
+        final int sizeY =  b - t ;
 
         for (int i = 0; i < count; i++) {
             View child = getChildAt(i);
             ItemInfo ii;
-            if (child.getVisibility() != GONE && (ii = infoForChild(child)) != null) {
-                int off = size * ii.position;
+            if ((ii = infoForChild(child)) != null) {
+                int offX =0;
+                int offY =0;
+                //calculate off according to position:
+                switch (ii.position){
+                    case 0:  offX = sizeX * 1;offY = sizeY * 1;break;
+                    case 1:  offX = sizeX * 1;offY = sizeY * 0;break;
+                    case 4:  offX = sizeX * 0;offY = sizeY * 1;break;
+                    case 2:  offX = sizeX * 2;offY = sizeY * 1;break;
+                    case 3:  offX = sizeX * 1;offY = sizeY * 2;break;
+                    default: throw new UnsupportedOperationException("position range 0-4 !");
+                }
+
                 int childLeft = getPaddingLeft();
                 int childTop = getPaddingTop();
-                if (mOrientation == HORIZONTAL) {
-                    childLeft += off;
-                } else {
-                    childTop += off;
-                }
+                    childLeft += offX;
+                    childTop += offY;
                 if (DEBUG)
-                    Log.v(TAG, "onLayout: Positioning #" + i + " " + child + " f=" + ii.object
+                    Log.v(TAG, "onLayout: Positioning #" + i + " pos:"+ii.position + " f=" + ii.object.getClass().getName()
                             + ":" + childLeft + "," + childTop + " " + child.getMeasuredWidth()
                             + "x" + child.getMeasuredHeight());
                 child.layout(childLeft, childTop,
                         childLeft + child.getMeasuredWidth(),
                         childTop + child.getMeasuredHeight());
+
             }
         }
     }
@@ -924,6 +998,7 @@ public class BiDirectionalViewPager extends ViewGroup {
         completeScroll();
     }
     private void completeScroll() {
+        Log.i(TAG,"completeScroll()");
         boolean needPopulate = false;
 
        if (mScrolling) {
@@ -941,6 +1016,8 @@ public class BiDirectionalViewPager extends ViewGroup {
         }
         mPopulatePending = false;
         mScrolling = false;
+
+        //TODO clean this up: never invoked
         for (int i = 0; i < mItems.size(); i++) {
             ItemInfo ii = mItems.get(i);
             if (ii.scrolling) {
@@ -948,9 +1025,11 @@ public class BiDirectionalViewPager extends ViewGroup {
                 ii.scrolling = false;
             }
         }
-        if (needPopulate) {
-            populate();
-        }
+        //if (needPopulate) {
+        populate();
+        //setCurrentItem(0);
+        //populate();
+        //}
     }
 
     @Override
@@ -1221,10 +1300,9 @@ public class BiDirectionalViewPager extends ViewGroup {
                     }
                    // Log.i(TAG, "mLastMotionY ="+y+" mLastMotionX="+x);
                     if(DEBUG)  Log.i(TAG, "current Item ="+mCurItem);
-
-                    final float lowerBound = Math.max(0, (mCurItem - 1) * size);
-                    final float upperBound =
-                            Math.min(mCurItem + 1, mAdapter.getCount() - 1) * size;
+                    final float lowerBound = computePrevPosition() == 0 ? size : 0; //Math.max(0, (mCurItem - 1) * size);
+                    final float upperBound = computeNextPosition() == 0 ? size : size * 2 ;
+                           // Math.min(mCurItem + 1, mAdapter.getCount() - 1) * size;
                     if (scroll < lowerBound) {
                         scroll = lowerBound;
                     } else if (scroll > upperBound) {
@@ -1233,7 +1311,7 @@ public class BiDirectionalViewPager extends ViewGroup {
                     if (mOrientation == HORIZONTAL) {
                         scrollTo((int) scroll, getScrollY());
                     } else {
-                        scrollTo(getScrollX() , (int) scroll);
+                        scrollTo(getScrollX(), (int) scroll);
                     }
                     //mLastMotionY += scroll - (int) scroll;
                     //mLastMotionX += scroll - (int) scroll;
@@ -1276,12 +1354,14 @@ public class BiDirectionalViewPager extends ViewGroup {
                             || Math.abs(initialMotion - lastMotion) >= sizeOverThree) {
                         Log.i(TAG, "lastMotion="+lastMotion+"mInitialMotionX="+ initialMotion);
                         if (lastMotion > initialMotion) {
-                            setCurrentItemInternal(mCurItem - 1, true, true);
+                            if(computePrevPosition() != null)
+                                setCurrentItemInternal(computePrevPosition(), true, true);
                         } else {
-                            setCurrentItemInternal(mCurItem + 1, true, true);
+                            if(computeNextPosition() != null)
+                            setCurrentItemInternal(computeNextPosition(), true, true);
                         }
                     } else {
-                        setCurrentItemInternal(mCurItem, true, true);
+                        setCurrentItemInternal(0, true, true); //snap back to original position
                     }
 
                     mActivePointerId = INVALID_POINTER;
@@ -1315,6 +1395,29 @@ public class BiDirectionalViewPager extends ViewGroup {
         }
         return true;
     }
+
+
+    private Integer computeNextPosition(){
+        if(mOrientation == HORIZONTAL){
+            if(currentItemInfo.rightFragmentClass == null) return 0;
+            return 2;
+        }else {
+            if(currentItemInfo.bottomFragmentClass == null) return 0;
+            return 3;
+        }
+    }
+
+    private Integer computePrevPosition(){
+        if(mOrientation == HORIZONTAL){
+            if(currentItemInfo.leftFragmentClass == null) return 0;
+            return 4;
+        }else {
+            if(currentItemInfo.topFragmentClass == null) return 0;
+            return 1;
+        }
+    }
+
+
     @Override
     public void draw(Canvas canvas) {
         super.draw(canvas);
@@ -1516,14 +1619,14 @@ public class BiDirectionalViewPager extends ViewGroup {
     }
     boolean pageLeft() {
         if (mCurItem > 0) {
-            setCurrentItem(mCurItem - 1, true);
+            setCurrentItem(computePrevPosition(), true);
             return true;
         }
         return false;
     }
     boolean pageRight() {
         if (mAdapter != null && mCurItem < (mAdapter.getCount()-1)) {
-            setCurrentItem(mCurItem+1, true);
+            setCurrentItem(computeNextPosition(), true);
             return true;
         }
         return false;
@@ -1678,13 +1781,13 @@ public class BiDirectionalViewPager extends ViewGroup {
             switch (action) {
                 case AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD: {
                     if (mAdapter != null && mCurItem >= 0 && mCurItem < mAdapter.getCount() - 1) {
-                        setCurrentItem(mCurItem + 1);
+                        //setCurrentItem(mCurItem + 1);
                         return true;
                     }
                 } return false;
                 case AccessibilityNodeInfoCompat.ACTION_SCROLL_BACKWARD: {
                     if (mAdapter != null && mCurItem > 0 && mCurItem < mAdapter.getCount()) {
-                        setCurrentItem(mCurItem - 1);
+                        //setCurrentItem(mCurItem - 1);
                         return true;
                     }
                 } return false;
@@ -1754,16 +1857,20 @@ public class BiDirectionalViewPager extends ViewGroup {
 
         // Adjust scroll for new orientation
         mOrientation = orientation;
+        /*
         if (mOrientation == HORIZONTAL) {
             scrollTo(mCurItem * getWidth() , 0 );
         } else {
             scrollTo(0 , mCurItem * getHeight());
         }
+        */
+        scrollTo(getWidth() , getHeight());
         requestLayout();
     }
 
     @Override
     public void scrollTo(int x, int y) {
+        Log.d(TAG,"scrollTo("+x+","+y+")");
         super.scrollTo(x, y);
     }
 
@@ -1789,6 +1896,16 @@ public class BiDirectionalViewPager extends ViewGroup {
         for (int i = 0; i < mItems.size(); i++) {
             ItemInfo ii = mItems.get(i);
             if (mAdapter.isViewFromObject(child, ii.object)) {
+                return ii;
+            }
+        }
+        return null;
+    }
+
+    ItemInfo getItemInfoForPosition(int position){
+        for (int i = 0; i < mItems.size(); i++) {
+            ItemInfo ii = mItems.get(i);
+            if (ii.position == position) {
                 return ii;
             }
         }
